@@ -11,7 +11,7 @@ def create_pool(loop, **kw):
     # print(kw)
     logging.info('create database connection pool...')
     global __pool
-    __pool = await aiomysql.create_pool(
+    __pool = yield from aiomysql.create_pool(
         host = kw.get('host', 'localhost'),
         port = kw.get('port', 3306),
         user = kw['user'],
@@ -95,12 +95,12 @@ class ModelMetaclass(type):
         attrs['__table__'] = tableName
         attrs['__primary_key__'] = primaryKey
         attrs['__fields__'] = fields
-        attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, 
-        	', '.join(escaped_fields), tableName)
-        attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName, 
-        	', '.join(escaped_fields), primaryKey, 
+        attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey,
+            ', '.join(escaped_fields), tableName)
+        attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName,
+            ', '.join(escaped_fields), primaryKey,
         	create_args_string(len(escaped_fields) + 1))
-        attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, 
+        attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName,
         	', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)),
         	primaryKey)
         attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
