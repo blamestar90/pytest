@@ -1,0 +1,35 @@
+import config_default
+
+
+class Dict(dict):
+    
+    def __init__(self, names=(), values=(), **kw):
+        super(Dict, self).__init__(**kw)
+        for k, v in zip(names, values):
+            self[k] = v
+
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(r'"Dict" object has no atttribute "%s"' % key)
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+
+def merge(defaults, override):
+    r = {}
+    for k, v in defaults.items():
+        if k in override:
+            if isinstance(v, dict)
+
+
+configs = config_default.configs
+
+
+try:
+    import config_override
+    configs = merge(configs, config_override.configs)
+except ImportError:
+    pass
