@@ -1,13 +1,14 @@
 import logging; logging.basicConfig(level=logging.INFO)
 import asyncio, os, json, time
+import orm
 from datetime import datetime
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
 from coreweb import add_routes, add_static
 
 
-def index(response):
-    return web.Response(body=b'<h1>Awesome</h1>')
+# def index(response):
+#     return web.Response(body=b'<h1>Awesome</h1>')
 
 
 def init_jinja2(app, **kw):
@@ -47,26 +48,12 @@ def datetime_filter(t):
 
 
 @asyncio.coroutine
-def init(loop):
-    # yield from orm.create_pool(loop=loop, **configs.db)
-    app = web.Application(loop=loop, middlewares=[
-        logger_factory, response_factory
-    ])
-    app.router.add_route('GET', '/', index)
-    init_jinja2(app, filters=dict(datetime=datetime_filter))
-    add_routes(app, 'handler')
-    add_static(app)
-    srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 9000)
-    logging.info('server started at http://127.0.0.1:9000...')
-    return srv
-
-
-@asyncio.coroutine
 def logger_factory(app, handler):
     @asyncio.coroutine
     def logger(request):
         logging.info('Request: %s %s' % (request.method, request.path))
-        return (yield from handler(request))
+        resp = yield from handler(request)
+        return resp
     return logger
 
 
@@ -93,8 +80,34 @@ def response_factory(app, handler):
                 resp.content_type = 'application/json;charset=utf-8'
                 return resp
             else:
-                r['__user__'] = request.__user__
-                resp = web.Response()
+                resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
+                resp.content_type = 'text/html;charset=utf-8'
+                return resp
+        if isinstance(r, int) and r >= 100 and r < 600:
+            return web.Response(r)
+        if isinstance(r, tuple) and len(r) == 2:
+            t, m = r
+            if isinstance(t, int) and t >= 100 and t < 600:
+                return web.Response(t, str(m))
+        resp = web.Response(body=str(r).encode('utf-8'))
+        resp.content_type = 'text/plain;charset=utf-8'
+        return resp
+    return response
+
+
+@asyncio.coroutine
+def init(loop):
+    yield from orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='www-data', password='www-data', db='awesome')
+    app = web.Application(loop=loop, middlewares=[
+        logger_factory, response_factory
+    ])
+    # app.router.add_route('GET', '/', index)
+    init_jinja2(app, filters=dict(datetime=datetime_filter))
+    add_routes(app, 'handlers')
+    add_static(app)
+    srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 9000)
+    logging.info('server started at http://127.0.0.1:9000...')
+    return srv
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(init(loop))
