@@ -1,5 +1,5 @@
 from coreweb import get
-from models import User, Blog
+from models import Blog
 import asyncio
 import time
 
@@ -15,5 +15,5 @@ def index(request):
     ]
     return {
         '__template__': 'blogs.html',
-        'users': blogs
+        'blogs': blogs
     }

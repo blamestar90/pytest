@@ -34,7 +34,7 @@ def init_jinja2(app, **kw):
 
 
 def datetime_filter(t):
-    delta = int(time.time - t)
+    delta = int(time.time() - t)
     if delta < 60:
         return r'1分钟前'
     if delta < 3600:
