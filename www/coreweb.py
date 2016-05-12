@@ -1,5 +1,6 @@
 from aiohttp import web
 from urllib import parse
+from apis import APIError
 import functools
 import asyncio
 import inspect
