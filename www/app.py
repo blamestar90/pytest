@@ -1,10 +1,12 @@
 import logging; logging.basicConfig(level=logging.INFO)
 import asyncio, os, json, time
 import orm
+import hashlib
 from datetime import datetime
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
 from coreweb import add_routes, add_static
+from models import User
 
 
 # def index(response):
@@ -93,6 +95,50 @@ def response_factory(app, handler):
         resp.content_type = 'text/plain;charset=utf-8'
         return resp
     return response
+
+
+@asyncio.coroutine
+def auth_factory(app, handler):
+    @asyncio.coroutine
+    def auth(request):
+        logging.info('check user: %s %s' % (request.method, request.path))
+        request.__user__ = None
+        cookie_str = request.cookies.get(COOKIE_NAME)
+        if cookie_str:
+            user = yield from cookie2user(cookie_str)
+            if user:
+                logging.info('set current user: %s' % user.email)
+                request.__user__ = user
+            return (yield from handler(request))
+        return auth
+
+
+@asyncio.coroutine
+def cookie2user(cookie_str):
+    '''
+    Parse cookie and load user if cookie is valid.
+    '''
+    if not cookie_str:
+        return None
+    try:
+        L = cookie_str.split('-')
+        if len(L) != 3:
+            return None
+        uid, expires, sha1 = L
+        if int(expires) < time.time():
+            return None
+        user = yield from User.find(uid)
+        if user is None:
+            return None
+        s = '%s-%s-%s-%s' % (uid, user.passwd, expires, _COOKIE_KEY)
+        if sha1 != hashlib.sha1(s.encode('utf-8')).hexdigest():
+            logging.info('invalid sha1')
+            return None
+        user.passwd = '******'
+        return user
+    except Exception as e:
+        logging.exception(e)
+        return None
 
 
 @asyncio.coroutine
